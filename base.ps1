@@ -86,8 +86,8 @@ function Make-UltraCool {
 
     if ($VerboseMode) { Write-Host "Writing desktop.ini..." }
 
-    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links") -IconFile (Join-Path $resources "imageplus2.icl") -IconIndex 79
-    New-FolderWithIcon -FolderPath (Join-Path $path "Resources") -IconFile (Join-Path $resources "imageplus2.icl") -IconIndex 61
+    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 16
+    New-FolderWithIcon -FolderPath $resources -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 2
 
     if ($VerboseMode) { Write-Host "Creating shell links..." }
 
@@ -171,7 +171,7 @@ function Make-UltraCool {
     $shortcut = Join-Path $folder "Resources For Ultra Cool.lnk"
     $link = $shell.CreateShortcut($shortcut)
     $link.TargetPath = $resources
-    $link.IconLocation = "$(Join-Path $resources "imageplus2.icl"), 61"
+    $link.IconLocation = "$(Join-Path $resources "imageplus1.icl"), 2"
     $link.Save()
 
     }

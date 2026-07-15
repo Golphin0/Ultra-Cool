@@ -5,14 +5,22 @@ $VerboseMode = $true
 $WaitAfterDone = $true
 
 if (-not $iconsbase64) {
-    if (-not (Test-Path (Join-Path $PSScriptRoot "base64.txt") ) ) {
+    $Base64Path = Join-Path $PSScriptRoot "base64.txt"
+
+    if (-not (Test-Path $Base64Path)) {
         Write-Host "base64.txt not found. Please ensure it is in the same directory as this script."
         pause
         $running = $false
         exit
     }
-    $Base64File = (Get-Content -Path (Join-Path $PSScriptRoot "base64.txt"))
-    $iconsbase64 = $Base64File[1]
+
+    $lines = Get-Content $Base64Path
+
+    for ($i = 0; $i -lt $lines.Count; $i += 2) {
+        $name = $lines[$i].Trim()
+        $value = $lines[$i + 1]
+        Set-Variable -Name $name -Value $value -Scope Global
+    }
 }
 
 function New-FolderWithIcon {
@@ -24,11 +32,15 @@ function New-FolderWithIcon {
 
     New-Item -ItemType Directory -Path $FolderPath -Force | Out-Null
 
+
     "[.ShellClassInfo]`r`nIconResource=$IconFile,$IconIndex" | Set-Content (Join-Path $FolderPath "desktop.ini") -Encoding ASCII
+
 
     attrib +h +s (Join-Path $FolderPath "desktop.ini")
     attrib +r $FolderPath
+
 }
+
 
 function Make-UltraCool {
     Clear-Host
@@ -87,6 +99,8 @@ function Make-UltraCool {
     if ($VerboseMode) { Write-Host "Writing desktop.ini..." }
 
     New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 16
+    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Programs") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 157
+    New-FolderWithIcon -FolderPath (Join-Path $path "Powershell Programs") -IconFile (Join-Path $resources "imageplus2.icl") -IconIndex 327
     New-FolderWithIcon -FolderPath $resources -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 2
 
     if ($VerboseMode) { Write-Host "Creating shell links..." }
@@ -150,12 +164,14 @@ function Make-UltraCool {
     
 
     $shell = New-Object -ComObject WScript.Shell
-    $folder = Join-Path $path "Useful Links"
+    $linkfolder = Join-Path $path "Useful Links"
+
 
     foreach ($name in $items.Keys) {
         if ($VerboseMode) { Write-Host "Creating $name..." }
 
-        $shortcut = Join-Path $folder "$name.lnk"
+        $shortcut = Join-Path $linkfolder "$name.lnk"
+
 
         $link = $shell.CreateShortcut($shortcut)
         $link.TargetPath = "explorer.exe"
@@ -164,24 +180,87 @@ function Make-UltraCool {
         $link.Save()
     }
 
-    if (-not $ResourcesInsideUltraCool) { 
+    
 
-    if ($VerboseMode) { Write-Host "Creating Resources Shortcut..." }
+    if ($VerboseMode) { Write-Host "Creating Programs Shortcuts..." }
 
-    $shortcut = Join-Path $folder "Resources For Ultra Cool.lnk"
-    $link = $shell.CreateShortcut($shortcut)
-    $link.TargetPath = $resources
-    $link.IconLocation = "$(Join-Path $resources "imageplus1.icl"), 2"
-    $link.Save()
-
+    $progfolder = Join-Path $path "Useful Programs"
+    $items = @{
+        "Character Map" = @{
+            Path = "C:\Windows\System32\charmap.exe"
+            Icon  = "C:\Windows\System32\charmap.exe"
+            Index = 0
+        }
+        "Disk Management" = @{
+            Path = "C:\Windows\System32\diskmgmt.msc"
+            Icon  = "C:\Windows\System32\diskmgmt.msc"
+            Index = 0
+        }
+        "Disk Cleanup" = @{
+            Path = "C:\Windows\System32\cleanmgr.exe"
+            Icon  = "C:\Windows\System32\cleanmgr.exe"
+            Index = 0
+        }
+        "System Information" = @{
+            Path = "C:\Windows\System32\msinfo32.exe"
+            Icon  = "C:\Windows\System32\msinfo32.exe"
+            Index = 0
+        }
+        "Windows Version" = @{
+            Path = "C:\Windows\System32\winver.exe"
+            Icon  = (Join-Path $resources "imageplus1.icl")
+            Index = 96
+        }
+        "Joystick" = @{
+            Path = "C:\Windows\System32\joy.cpl"
+            Icon  = "C:\Windows\System32\joy.cpl"
+            Index = 0
+        }
     }
 
+    foreach ($name in $items.Keys) {
+        if ($VerboseMode) { Write-Host "Creating $name..." }
+
+        $shortcut = Join-Path $progfolder "$name.lnk"
+
+        $link = $shell.CreateShortcut($shortcut)
+        $link.TargetPath = $items[$name].Path
+        $link.IconLocation = "$($items[$name].Icon), $($items[$name].Index)"
+        $link.Save()
+    }
+
+
+    if ($VerboseMode) { Write-Host "Creating Powershell Programs..." }
+
+    $psfolder = Join-Path $path "Powershell Programs"
+
+    [IO.File]::WriteAllBytes(
+        (Join-Path $psfolder "ps.zip"),
+        [Convert]::FromBase64String($powershellbase64)
+    )
+
+    Expand-Archive -Path (Join-Path $psfolder "ps.zip") -DestinationPath $psfolder
+    Remove-Item (Join-Path $psfolder "ps.zip")
+
+
+    if (-not $ResourcesInsideUltraCool) { 
+
+        if ($VerboseMode) { Write-Host "Creating Resources Shortcut..." }
+
+        $shortcut = Join-Path $linkfolder "Resources For Ultra Cool.lnk"
+        $link = $shell.CreateShort
+        cut($shortcut)
+        $link.TargetPath = $resources
+        $link.IconLocation = "$(Join-Path $resources "imageplus1.icl"), 2"
+        $link.Save()
+    }
 
     Write-Host "`nDone!" -ForegroundColor Green
 
     if ($WaitAfterDone) {
         pause
     }
+
 }
 
 function Remove-UltraCool($embed) {
@@ -191,10 +270,11 @@ function Remove-UltraCool($embed) {
     $path = Join-Path $PSScriptRoot "Ultra Cool"
     $resources = "C:\UltraCoolResources"
 
-    function Remove-Folder($folder) {
-        if (!(Test-Path $folder)) { return }
+    function Remove-Folder($linkfolder) {
+        if (!(Test-Path $linkfolder)) { return }
 
-        Get-ChildItem $folder -Force | ForEach-Object {
+
+        Get-ChildItem $linkfolder -Force | ForEach-Object {
             attrib -h -s -r $_.FullName 2>$null
 
             if ($_.PSIsContainer) {
@@ -205,9 +285,10 @@ function Remove-UltraCool($embed) {
             }
         }
 
-        attrib -h -s -r $folder 2>$null
-        Remove-Item $folder -Force
+        attrib -h -s -r $linkfolder 2>$null
+        Remove-Item $linkfolder -Force
     }
+
 
     Remove-Folder $path
     Remove-Folder $resources

@@ -4,7 +4,7 @@ $running = $true
 $VerboseMode = $true
 $WaitAfterDone = $true
 
-if (-not $iconsbase64) {
+if (-not $iconsbase64 -or -not $powershellbase64) {
     $Base64Path = Join-Path $PSScriptRoot "base64.txt"
 
     if (-not (Test-Path $Base64Path)) {
@@ -98,14 +98,19 @@ function Make-UltraCool {
 
     if ($VerboseMode) { Write-Host "Writing desktop.ini..." }
 
+    $shell32icons = "$env:SystemRoot\System32\shell32.dll"
+
     New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 16
-    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Programs") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 157
+    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links\FolderDescription Links") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 10
+    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links\Useful Programs") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 157
+    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links\Control Panel Links") -IconFile $shell32icons -IconIndex 21
+    New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links\NameSpace Links") -IconFile C:\Windows\regedit.exe -IconIndex 0
     New-FolderWithIcon -FolderPath (Join-Path $path "Powershell Programs") -IconFile (Join-Path $resources "imageplus2.icl") -IconIndex 327
-    New-FolderWithIcon -FolderPath $resources -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 2
+    New-FolderWithIcon -FolderPath (Join-Path $path "Resources") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 2
 
     if ($VerboseMode) { Write-Host "Creating shell links..." }
 
-    $shell32icons = "$env:SystemRoot\System32\shell32.dll"
+    
 
 
     $items = @{
@@ -157,7 +162,7 @@ function Make-UltraCool {
         "Run Commands" = @{
             Shell = "::{2559A1F3-21D7-11D4-BDAF-00C04F60B9F0}"
             Icon  = $shell32icons
-            Index = 326
+            Index = 214
         }
     }
 
@@ -180,11 +185,90 @@ function Make-UltraCool {
         $link.Save()
     }
 
+    if ($VerboseMode) { Write-Host "Creating FolderDescriptions Shortcuts..." }
+
+    $FDfolder = Join-Path $path "Useful Links\FolderDescription Links"
+    $RegPath = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions"
+    
+    $Shell = New-Object -ComObject WScript.Shell
+
+    Get-ChildItem $RegPath | ForEach-Object {
+        
+        $Name = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).Name
+        if ($VerboseMode) { Write-Host "Creating $Name..." }
+
+        if ([string]::IsNullOrWhiteSpace($Name)) {
+            $Name = $Guid
+        }
+
+        $Shortcut = $Shell.CreateShortcut((Join-Path $FDfolder "$Name.lnk"))
+        $Shortcut.TargetPath = "explorer.exe"
+        $Shortcut.Arguments = "shell:$Name"
+        $Shortcut.IconLocation = "explorer.exe,0"
+        $Shortcut.Save()
+    }
+
+    if ($VerboseMode) { Write-Host "Creating Control Panel Shortcuts..." }
+
+    $CPfolder = Join-Path $path "Useful Links\Control Panel Links"
+
+    $RegPath = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel\NameSpace"
+
+    Get-ChildItem $RegPath | ForEach-Object {
+        
+        $Guid = $_.PSChildName
+        $Name = (Get-ItemProperty $_.PSPath).'(default)'
+        if ($VerboseMode) { Write-Host "Creating $Name..." }
+
+        if ([string]::IsNullOrWhiteSpace($Name)) {
+            $Name = $Guid
+        }
+
+        $Shortcut = $Shell.CreateShortcut((Join-Path $CPfolder "$Name.lnk"))
+        $Shortcut.TargetPath = "explorer.exe"
+        $Shortcut.Arguments = "shell:::$Guid"
+        $Shortcut.IconLocation = "explorer.exe,0"
+        $Shortcut.Save()
+    }
+
+    if ($VerboseMode) { Write-Host "Creating NameSpace Shortcuts..." }
+
+    $NSfolder = Join-Path $path "Useful Links\NameSpace Links"
+    $RegPath = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"
+
+    Get-ChildItem $RegPath | ForEach-Object {
+        
+        $NameSpace = Join-Path $_.PSPath "NameSpace"
+
+        if (-not (Test-Path $NameSpace)) {
+            return
+        }
+
+        Get-ChildItem $NameSpace | ForEach-Object {
+            $Guid = $_.PSChildName
+            $Name = (Get-ItemProperty $_.PSPath).'(default)'
+            if ($VerboseMode) { Write-Host "Creating $Name..." }
+
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                $Name = $Guid
+            }
+
+            $Name = $Name -replace '[\\/:*?"<>|]', '_'
+
+            $Shortcut = $Shell.CreateShortcut((Join-Path $NSfolder "$Name.lnk"))
+            $Shortcut.TargetPath = "explorer.exe"
+            $Shortcut.Arguments = "shell:::$Guid"
+            $Shortcut.IconLocation = "explorer.exe,0"
+            $Shortcut.Save()
+        }
+    }
+
+
     
 
     if ($VerboseMode) { Write-Host "Creating Programs Shortcuts..." }
 
-    $progfolder = Join-Path $path "Useful Programs"
+    $progfolder = Join-Path $path "Useful Links\Useful Programs"
     $items = @{
         "Character Map" = @{
             Path = "C:\Windows\System32\charmap.exe"
@@ -248,8 +332,7 @@ function Make-UltraCool {
         if ($VerboseMode) { Write-Host "Creating Resources Shortcut..." }
 
         $shortcut = Join-Path $linkfolder "Resources For Ultra Cool.lnk"
-        $link = $shell.CreateShort
-        cut($shortcut)
+        $link = $shell.CreateShortcut($shortcut)
         $link.TargetPath = $resources
         $link.IconLocation = "$(Join-Path $resources "imageplus1.icl"), 2"
         $link.Save()
@@ -266,6 +349,7 @@ function Make-UltraCool {
 function Remove-UltraCool($embed) {
     Clear-Host
     Write-Host "Removing Ultra Cool..." -ForegroundColor Cyan
+    Write-Host
 
     $path = Join-Path $PSScriptRoot "Ultra Cool"
     $resources = "C:\UltraCoolResources"
@@ -286,6 +370,8 @@ function Remove-UltraCool($embed) {
         }
 
         attrib -h -s -r $linkfolder 2>$null
+
+        if ($VerboseMode) { Write-Host "Removed $linkfolder..." -ForegroundColor Yellow }
         Remove-Item $linkfolder -Force
     }
 

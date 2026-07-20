@@ -23,6 +23,11 @@ while ($true) {
     switch ($Choice) {
 
         "1" {
+
+            $cmdStore = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell"
+            $submenu1 = "Registry::HKEY_CLASSES_ROOT\Directory\shell\Tools"
+            $submenu2 = "Registry::HKEY_CLASSES_ROOT\*\shell\Tools"
+
             function Set-Receiver {
                 $Good = $true
                 $ReceiverPath = Read-Host "Enter the path where you want to place the script, With or without quotes (Enter nothing for default location `"C:\SymlinkReceiver\Symlink.ps1`")"
@@ -56,7 +61,7 @@ while ($true) {
                 }
             }
             
-            if (Test-Path $ShortcutPath) {
+            if ( (Test-Path $submenu1) -or (Test-Path -LiteralPath $submenu2) ) {
                 Write-Host -NoNewline "Already exists. Do you want to override it? (Y/N): " -ForegroundColor Yellow
                 $Override = (Read-Host).ToLower() -eq "n"
 
@@ -126,7 +131,6 @@ while ($true) {
                 } elseif (Test-Path "C:\UltraCoolResources") {
                     $resourcesPath = "C:\UltraCoolResources"
                 } else {
-                    Write-Host "$AddIcons"
                     Write-Host "Resources directory not found. Continuing without icons." -ForegroundColor Yellow
                     pause
                 }
@@ -140,10 +144,6 @@ while ($true) {
             [IO.File]::WriteAllBytes($ScriptZip, [Convert]::FromBase64String($ScriptsBase64))
             Expand-Archive -LiteralPath $ScriptZip -DestinationPath $ScriptPath -Force
             Remove-Item $ScriptZip -Force
-
-            $cmdStore = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell"
-            $submenu1 = "Registry::HKEY_CLASSES_ROOT\Directory\shell\Tools"
-            $submenu2 = "Registry::HKEY_CLASSES_ROOT\*\shell\Tools"
 
             # Create submenu
             $SubTools = ""
@@ -177,7 +177,7 @@ while ($true) {
             Remove-Item "C:\SymlinkReceiver\Symlink.ps1" -ErrorAction SilentlyContinue
             Remove-Item (Join-Path $PSScriptRoot "Symlink.ps1") -ErrorAction SilentlyContinue
             Remove-Item "Registry::HKEY_CLASSES_ROOT\Directory\shell\Tools" -Recurse -ErrorAction SilentlyContinue
-            Remove-Item "Registry::HKEY_CLASSES_ROOT\*\shell\Tools" -Recurse -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath "Registry::HKEY_CLASSES_ROOT\*\shell\Tools" -Recurse -ErrorAction SilentlyContinue
             Write-Host "Removed Send To shortcut.`r`nNote: The script file will not be deleted if you specified a custom location besides the default." -ForegroundColor Green
 
             pause

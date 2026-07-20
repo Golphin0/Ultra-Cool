@@ -93,7 +93,7 @@ function Make-UltraCool {
         [Convert]::FromBase64String($iconsbase64)
     )
 
-    Expand-Archive -Path (Join-Path $resources "Icons.zip") -DestinationPath $resources
+    Expand-Archive -Path (Join-Path $resources "Icons.zip") -Force -DestinationPath $resources
     Remove-Item (Join-Path $resources "Icons.zip")
 
     if ($VerboseMode) { Write-Host "Writing desktop.ini..." }
@@ -106,7 +106,7 @@ function Make-UltraCool {
     New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links\Control Panel Links") -IconFile $shell32icons -IconIndex 21
     New-FolderWithIcon -FolderPath (Join-Path $path "Useful Links\NameSpace Links") -IconFile C:\Windows\regedit.exe -IconIndex 0
     New-FolderWithIcon -FolderPath (Join-Path $path "Powershell Programs") -IconFile (Join-Path $resources "imageplus2.icl") -IconIndex 327
-    New-FolderWithIcon -FolderPath (Join-Path $path "Resources") -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 2
+    New-FolderWithIcon -FolderPath $resources -IconFile (Join-Path $resources "imageplus1.icl") -IconIndex 2
 
     if ($VerboseMode) { Write-Host "Creating shell links..." }
 

@@ -8,7 +8,7 @@ if (-not $iconsbase64 -or -not $powershellbase64) {
     $Base64Path = Join-Path $PSScriptRoot "base64.txt"
 
     if (-not (Test-Path $Base64Path)) {
-        Write-Host "base64.txt not found. Please ensure it is in the same directory as this script."
+        Write-Host "base64.txt not found. Please ensure it is in the same directory as this script or in the script itself."
         pause
         $running = $false
         exit

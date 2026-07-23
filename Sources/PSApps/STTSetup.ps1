@@ -248,8 +248,7 @@ while ($true) {
         }
 
         "2" {
-            Remove-Item $ShortcutPath -ErrorAction SilentlyContinue
-            Remove-Item "C:\\STTReceiver\\STT.ps1" -ErrorAction SilentlyContinue
+            Remove-Item "C:\STTReceiver\STT.ps1" -ErrorAction SilentlyContinue
             Remove-Item "Registry::HKEY_CLASSES_ROOT\Directory\shell\Tools" -Recurse -ErrorAction SilentlyContinue
             Remove-Item -LiteralPath "Registry::HKEY_CLASSES_ROOT\*\shell\Tools" -Recurse -ErrorAction SilentlyContinue
             foreach ($tool in (($Tools | Where-Object { $_.Name -eq "SubmenuGroup" }).Tools)) {

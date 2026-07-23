@@ -109,7 +109,11 @@ $Junction = Join-Path (Split-Path $Target) ("{0}-2{1}" -f [System.IO.Path]::GetF
 
 New-Item -ItemType $Type -Path $Junction -Target $Target | Out-Null
 Write-Styled "Created $Type from"
-Center-Host "'$Target' to '$Junction'." $true
-Write-Host "'$Target' to '$Junction'."
+Center-Host "`"$Target`"" $true
+Write-Host "`"$Target`"" -NoNewline
+Center-Host "To" $true
+Write-Host "To" -NoNewline
+Center-Host "`"$Junction`"" $true
+Write-Host "`"$Junction`"" -NoNewline
 Center-Host " " $true
 Start-Sleep -Seconds 2

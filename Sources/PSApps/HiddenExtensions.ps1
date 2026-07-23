@@ -109,12 +109,7 @@ while ($true) {
     $Path = "Registry::HKEY_CLASSES_ROOT\$($Item.ProgID)"
 
     try {
-
-        $Existing = Get-ItemProperty `
-            -Path $Path `
-            -Name NeverShowExt `
-            -ErrorAction Stop
-
+        
         Remove-ItemProperty `
             -Path $Path `
             -Name NeverShowExt `

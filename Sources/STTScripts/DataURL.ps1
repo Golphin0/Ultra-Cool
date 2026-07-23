@@ -1,3 +1,11 @@
+param(
+    [string]$Path
+)
+
+if (-not $Path) {
+    $Path = Read-Host "Enter file path"
+}
+
 Function Write-Styled($message) {
     # Write a message to the console
     Clear-Host
@@ -22,7 +30,6 @@ Function Write-Styled($message) {
 
     Write-Host $message -NoNewline
 }
-
 Function Read-Styled($message) {
     # Read a value from the console
     Clear-Host
@@ -64,52 +71,42 @@ Function Center-Host($message, $newLine) {
     $ui.CursorPosition = New-Object Management.Automation.Host.Coordinates($left, $ui.CursorPosition.Y)
 }
 
-if ($args.Count -gt 0) {
-    $Target = $args[0]
-}
-else {
-    $Target = Read-Host "Enter target folder path"
-}
+$Path = $Path.Trim('"')
 
-$Target = $Target.Trim('"')
-
-if (-not (Test-Path $Target)) {
-    Write-Host "Item not found: $Target" -ForegroundColor Red
-    pause
+if (-not (Test-Path $Path)) {
+    Write-Styled "File not found."
+    Start-Sleep -Seconds 2
     exit
 }
 
-$FileType = (Get-Item $Target).PSIsContainer
+$Path = (Resolve-Path $Path).Path
 
-if ($FileType) {
-    Write-Styled "Enter link type, 1 for Junction, 2 for SymbolicLink."
-    Center-Host "SymbolicLink will be selected by default." $true
-    Write-Host "SymbolicLink will be selected by default." -NoNewline
+if ((Get-Item $Path).Length -gt 2KB) {
+    Write-Styled "File may be too big to work properly."
+    Center-Host "Continue? (y/n)" $true
+    Write-Host "Continue? (y/n)" -NoNewline
     Center-Host " " $true
-    $Type = Read-Host
-    if ($Type -eq 1) {
-        $Type = "Junction"
-    } else {
-        $Type = "Symboliclink"
-    }
-} else {
-    Write-Styled "Enter link type, 1 for Hardlink, 2 for SymbolicLink."
-    Center-Host "SymbolicLink will be selected by default." $true
-    Write-Host "SymbolicLink will be selected by default." -NoNewline
-    Center-Host " " $true
-    $Type = Read-Host
-    if ($Type -eq 1) {
-        $Type = "Hardlink"
-    } else {
-        $Type = "Symboliclink"
+    $answer = (Read-Host).ToLower() -ne "n"
+    if (-not $answer) {
+        Write-Styled "Cancelled."
+        Start-Sleep -Seconds 1
+        exit
     }
 }
 
-$Junction = Join-Path (Split-Path $Target) ("{0}-2{1}" -f [System.IO.Path]::GetFileNameWithoutExtension($Target), [System.IO.Path]::GetExtension($Target))
+Add-Type -AssemblyName System.Web
 
-New-Item -ItemType $Type -Path $Junction -Target $Target | Out-Null
-Write-Styled "Created $Type from"
-Center-Host "'$Target' to '$Junction'." $true
-Write-Host "'$Target' to '$Junction'."
+$ext = [IO.Path]::GetExtension($Path)
+$mime = (Get-ItemProperty "Registry::HKEY_CLASSES_ROOT\$ext" -ErrorAction SilentlyContinue).'Content Type'
+
+$bytes = [IO.File]::ReadAllBytes($Path)
+$b64 = [Convert]::ToBase64String($bytes)
+
+$dataUrl = "data:$mime;base64,$b64"
+
+Set-Clipboard $dataUrl
+
+Write-Styled "Copied data URL to clipboard."
 Center-Host " " $true
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 1
+exit

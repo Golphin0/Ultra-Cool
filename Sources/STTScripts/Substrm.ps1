@@ -1,3 +1,10 @@
+if ($args.Count -gt 0) {
+    $Drive = $args[0]
+}
+else {
+    $Drive = Read-Host "Enter drive letter"
+}
+
 Function Write-Styled($message) {
     # Write a message to the console
     Clear-Host
@@ -22,7 +29,6 @@ Function Write-Styled($message) {
 
     Write-Host $message -NoNewline
 }
-
 Function Read-Styled($message) {
     # Read a value from the console
     Clear-Host
@@ -64,52 +70,33 @@ Function Center-Host($message, $newLine) {
     $ui.CursorPosition = New-Object Management.Automation.Host.Coordinates($left, $ui.CursorPosition.Y)
 }
 
-if ($args.Count -gt 0) {
-    $Target = $args[0]
-}
-else {
-    $Target = Read-Host "Enter target folder path"
-}
+$Drive = ($Drive -replace "[^a-zA-Z0-9]", "").ToUpper() + ":"
 
-$Target = $Target.Trim('"')
+$substList = subst
 
-if (-not (Test-Path $Target)) {
-    Write-Host "Item not found: $Target" -ForegroundColor Red
-    pause
+$match = $substList | Select-String "^$([regex]::Escape($Drive))\\"
+
+if (-not $match) {
+    Write-Styled "$Drive is not a SUBST drive."
+    Start-Sleep -Seconds 1
     exit
 }
 
-$FileType = (Get-Item $Target).PSIsContainer
+Write-Styled "Found SUBST drive:"
+Center-Host $Drive $true
+Write-Host "$Drive" -NoNewline
+Center-Host "Remove ${Drive}?" $true
+Write-Host "Remove ${Drive}?" -NoNewline
+Center-Host " " $true
+$confirm = (Read-Host).ToUpper()
 
-if ($FileType) {
-    Write-Styled "Enter link type, 1 for Junction, 2 for SymbolicLink."
-    Center-Host "SymbolicLink will be selected by default." $true
-    Write-Host "SymbolicLink will be selected by default." -NoNewline
-    Center-Host " " $true
-    $Type = Read-Host
-    if ($Type -eq 1) {
-        $Type = "Junction"
-    } else {
-        $Type = "Symboliclink"
-    }
-} else {
-    Write-Styled "Enter link type, 1 for Hardlink, 2 for SymbolicLink."
-    Center-Host "SymbolicLink will be selected by default." $true
-    Write-Host "SymbolicLink will be selected by default." -NoNewline
-    Center-Host " " $true
-    $Type = Read-Host
-    if ($Type -eq 1) {
-        $Type = "Hardlink"
-    } else {
-        $Type = "Symboliclink"
-    }
+if ($confirm -eq "Y") {
+    subst $Drive /D
+    Write-Styled "Removed $Drive"
+}
+else {
+    Write-Styled "Cancelled."
 }
 
-$Junction = Join-Path (Split-Path $Target) ("{0}-2{1}" -f [System.IO.Path]::GetFileNameWithoutExtension($Target), [System.IO.Path]::GetExtension($Target))
-
-New-Item -ItemType $Type -Path $Junction -Target $Target | Out-Null
-Write-Styled "Created $Type from"
-Center-Host "'$Target' to '$Junction'." $true
-Write-Host "'$Target' to '$Junction'."
-Center-Host " " $true
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 1
+exit

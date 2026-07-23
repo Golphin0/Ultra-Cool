@@ -1,4 +1,11 @@
-Function Write-Styled($message) {
+if ($args.Count -gt 0) {
+    $Path = $args[0]
+}
+else {
+    $Path = Read-Host "Enter folder path"
+}
+
+Function Write-Styled($message, $color) {
     # Write a message to the console
     Clear-Host
     $ui = $Host.UI.RawUI
@@ -12,7 +19,11 @@ Function Write-Styled($message) {
     $line = " " * $size.Width
 
     $ui.BackgroundColor = 'Blue'
-    $ui.ForegroundColor = 'Black'
+    if ($color) {
+        $ui.ForegroundColor = $color
+    } else {
+        $ui.ForegroundColor = 'Black'
+    }
 
     1..$size.Height | ForEach-Object {
         Write-Host $line
@@ -22,7 +33,6 @@ Function Write-Styled($message) {
 
     Write-Host $message -NoNewline
 }
-
 Function Read-Styled($message) {
     # Read a value from the console
     Clear-Host
@@ -64,52 +74,28 @@ Function Center-Host($message, $newLine) {
     $ui.CursorPosition = New-Object Management.Automation.Host.Coordinates($left, $ui.CursorPosition.Y)
 }
 
-if ($args.Count -gt 0) {
-    $Target = $args[0]
-}
-else {
-    $Target = Read-Host "Enter target folder path"
-}
+$Path = $Path.Trim('"')
 
-$Target = $Target.Trim('"')
-
-if (-not (Test-Path $Target)) {
-    Write-Host "Item not found: $Target" -ForegroundColor Red
-    pause
+if (-not (Test-Path $Path -PathType Container)) {
+    Write-Styled "Folder not found." -ForegroundColor Red
+    Start-Sleep 1
     exit
 }
 
-$FileType = (Get-Item $Target).PSIsContainer
+$Drive = Read-Styled "Enter drive letter (e.g. X)"
+$Drive = $Drive.TrimEnd(":").ToUpper()
 
-if ($FileType) {
-    Write-Styled "Enter link type, 1 for Junction, 2 for SymbolicLink."
-    Center-Host "SymbolicLink will be selected by default." $true
-    Write-Host "SymbolicLink will be selected by default." -NoNewline
-    Center-Host " " $true
-    $Type = Read-Host
-    if ($Type -eq 1) {
-        $Type = "Junction"
-    } else {
-        $Type = "Symboliclink"
-    }
-} else {
-    Write-Styled "Enter link type, 1 for Hardlink, 2 for SymbolicLink."
-    Center-Host "SymbolicLink will be selected by default." $true
-    Write-Host "SymbolicLink will be selected by default." -NoNewline
-    Center-Host " " $true
-    $Type = Read-Host
-    if ($Type -eq 1) {
-        $Type = "Hardlink"
-    } else {
-        $Type = "Symboliclink"
-    }
+subst "$Drive`:" "$Path"
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Styled "Created drive $Drive`:"
+    Center-Host "->" $true
+    Write-Host "->" -NoNewline
+    Center-Host "$Path" $true
+    Write-Host "$Path" -NoNewline
+}
+else {
+    Write-Styled "Failed to create drive." "Red"
 }
 
-$Junction = Join-Path (Split-Path $Target) ("{0}-2{1}" -f [System.IO.Path]::GetFileNameWithoutExtension($Target), [System.IO.Path]::GetExtension($Target))
-
-New-Item -ItemType $Type -Path $Junction -Target $Target | Out-Null
-Write-Styled "Created $Type from"
-Center-Host "'$Target' to '$Junction'." $true
-Write-Host "'$Target' to '$Junction'."
-Center-Host " " $true
-Start-Sleep -Seconds 2
+Start-Sleep 1

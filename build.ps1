@@ -1,7 +1,7 @@
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
 
-$defaultManifest = Join-Path $PSScriptRoot "Sources\manifest.json"
+$defaultSources = Join-Path $PSScriptRoot "Sources"
 $defaultOutput = $PSScriptRoot
 
 $xaml = @"
@@ -60,19 +60,19 @@ $xaml = @"
 
             </Border>
 
-            <!-- Manifest -->
+            <!-- Sources -->
             <Label Grid.Row="1"
                    Grid.Column="0"
                    VerticalAlignment="Center">
-                Manifest:
+                Sources:
             </Label>
 
-            <TextBox Name="ManifestFile"
+            <TextBox Name="SourcesFolder"
                      Grid.Row="1"
                      Grid.Column="1"
                      Margin="5"/>
 
-            <Button Name="BrowseManifest"
+            <Button Name="BrowseSources"
                     Grid.Row="1"
                     Grid.Column="2"
                     Margin="5">
@@ -140,27 +140,26 @@ $xaml = @"
 $reader = New-Object System.Xml.XmlNodeReader ([xml]$xaml)
 $window = [Windows.Markup.XamlReader]::Load($reader)
 
-$ManifestFile   = $window.FindName("ManifestFile")
+$SourcesFolder   = $window.FindName("SourcesFolder")
 $OutputFile   = $window.FindName("OutputFile")
 
-$BrowseManifest = $window.FindName("BrowseManifest")
+$BrowseSources = $window.FindName("BrowseSources")
 $BrowseOutput = $window.FindName("BrowseOutput")
 
 $ResetButton = $window.FindName("ResetButton")
 $CreateButton = $window.FindName("CreateButton")
 $CancelButton = $window.FindName("CancelButton")
 
-$ManifestFile.Text = $defaultManifest
+$SourcesFolder.Text = $defaultSources
 $OutputFile.Text = $defaultOutput
 
 
-$BrowseManifest.Add_Click({
-    $d = New-Object System.Windows.Forms.OpenFileDialog
-    $d.Filter = "Manifest Files (*.json)|*.json|All Files (*.*)|*.*"
-    $d.InitialDirectory = Split-Path $ManifestFile.Text
+$BrowseSources.Add_Click({
+    $d = New-Object System.Windows.Forms.FolderBrowserDialog
+    $d.SelectedPath = $SourcesFolder.Text
 
-    if($d.ShowDialog() -eq "OK"){
-        $ManifestFile.Text = $d.FileName
+    if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $SourcesFolder.Text = $d.SelectedPath
     }
 })
 
@@ -174,12 +173,12 @@ $BrowseOutput.Add_Click({
 })
 
 $ResetButton.Add_Click({
-    $ManifestFile.Text = $defaultManifest
+    $SourcesFolder.Text = $defaultSources
     $OutputFile.Text = $defaultOutput
 })
 
 $CreateButton.Add_Click({
-    $script:manifestFile    = $ManifestFile.Text
+    $script:SourcesFolder    = $SourcesFolder.Text
     $script:outFile    = $OutputFile.Text
     $window.DialogResult = $true
 })
@@ -192,20 +191,26 @@ if(-not $window.ShowDialog()){
     return
 }
 
-Write-Verbose "Manifest File : $manifestFile" -Verbose
+Write-Verbose "Sources Folder : $SourcesFolder" -Verbose
 Write-Verbose "Output File : $outFile" -Verbose
 
 
-if (!(Test-Path $manifestFile)) {
-    Write-Verbose "Manifest file not found." -Verbose
-    Write-Host "$manifestFile not found." -ForegroundColor Red
+if (-not (Test-Path $SourcesFolder)) {
+    Write-Verbose "Sources Folder Not Found." -Verbose
+    Write-Host "$SourcesFolder not found." -ForegroundColor Red
     pause
     exit 1
 }
 
 Write-Verbose "Reading input files..." -Verbose
 
-$lines = Get-Content $manifestFile
+if (-not (Test-Path (Join-Path $SourcesFolder "manifest.json"))) {
+    Write-Host "$SourcesFolder/manifest.json not found." -ForegroundColor Red
+    pause
+    exit 1
+}
+
+$lines = Get-Content (Join-Path $SourcesFolder "manifest.json")
 
 
 New-Item -Force -ItemType Directory -Path (Join-Path $env:TEMP "UCBuildTemp")
@@ -241,7 +246,7 @@ foreach ($item in $json) {
             $source = $source -replace '\[\[CURRENTBUILDS\]\]', (Join-Path $env:TEMP "UCBuildTemp")
             $tempplace = Join-Path $env:TEMP (Join-Path "UCBuildTemp" $file.tempplace)
             $out = ""
-            Set-Location (Join-Path $PSScriptRoot "Sources")
+            Set-Location $SourcesFolder
 
             if ($format -eq "base64") {
                 switch ($archive) {
@@ -261,7 +266,7 @@ foreach ($item in $json) {
                 $base64Data = [Convert]::ToBase64String($rawData)
                 $out += "`$$varname = `"$base64Data`""
             } elseif ($format -eq "directTable") {
-                $source = Join-Path $PSScriptRoot (Join-Path "Sources" $source)
+                $source = Join-Path $PSScriptRoot (Join-Path $SourcesFolder $source)
                 $rawData = Get-Content $source -Raw
                 $out += "`$$varname = $rawData"
             } elseif ($format -eq "carbonCopy") {
